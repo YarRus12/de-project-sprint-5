@@ -1,26 +1,9 @@
-from runpy import run_path
-from turtle import circle
-from typing import List
 from urllib.parse import quote_plus as quote
-from pymongo.mongo_client import MongoClient
-import pymongo
-from airflow.models.variable import Variable
-from datetime import datetime, timedelta
-from airflow import DAG
-import psycopg2
-from airflow.providers.http.operators.http import SimpleHttpOperator
-from airflow.operators.python import PythonOperator
-from airflow.hooks.base import BaseHook
 from airflow.models.xcom import XCom
-import datetime as dt
+from datetime import datetime
+import logging
 import logging
 import re
-import json
-import logging
-import Check
-from decimal import Decimal
-import Stage_upload
-import requests
 
 log = logging.getLogger(__name__)
 
@@ -239,7 +222,7 @@ def upload_orders(connect_to_db, dds_table, stg_table, time_table, user_table, r
                             SELECT du.id as user_id, dr.id as restaurant_id, dt.id as timestamp_id, order_info.order_id as order_key, order_info.order_status
                             FROM (
                                 SELECT '{order_id}' as order_id, '{eval(user_id).get('user_id')}' as user_id, '{eval(restaurant_id).get('restaurant_id')}' as restaurant_id,
-                                '{eval(order_date).get('date')}' as order_date, '{eval(order_status).get('order_status')}' as order_status   
+                                '{eval(order_date).get('date')}' as order_date, '{eval(final_status).get('final_status')}' as order_status   
                             ) as order_info
                             INNER JOIN dds.{time_table} dt
                             ON Date_trunc('second', dt.ts) = Date_trunc('second', order_info.order_date::timestamptz) AND dt.special_mark = 0
@@ -247,7 +230,8 @@ def upload_orders(connect_to_db, dds_table, stg_table, time_table, user_table, r
                             ON du.user_id  = order_info.user_id
                             INNER JOIN dds.{restaurant_table} dr
                             ON dr.restaurant_id = order_info.restaurant_id
-                            WHERE order_info.order_date > '{max_date}';"""
+                            WHERE order_info.order_date > '{max_date}'
+                            ON CONFLICT DO NOTHING;"""
         cursor.execute(orders_sql)
     cursor.execute(f"""INSERT INTO stg.srv_etl_settings as tbl (workflow_key, workflow_settings)
     VALUES ('{max(new_dates)}','{dds_table}') ON CONFLICT (workflow_settings) DO UPDATE SET workflow_key = EXCLUDED.workflow_key;""")
@@ -352,23 +336,23 @@ def upload_delivery(connect_to_db, dds_table, stg_table, time_table, courier_tab
         address = row[4]
         delivery_ts = row[5]
         rate=row[6]
-        delivery_sum = row[7]
+        order_sum = row[7]
         tip_sum = row[8]
         new_dates.append(delivery_ts)
-        delivery_insert = f"""INSERT INTO dds.{dds_table} (order_id, delivery_id, courier_id, address, delivery_ts_id, rate, delivery_sum, tip_sum)
-                            SELECT do1.id as order_id, delivery_info.delivery_id as delivery_id, dc.id as courier_id,
+        delivery_insert = f"""INSERT INTO dds.{dds_table} (order_id, delivery_id, courier_id, address, delivery_ts_id, rate, order_sum, tip_sum)
+                            SELECT delivery_info.order_id as order_id, delivery_info.delivery_id as delivery_id, dc.id as courier_id,
                             delivery_info.address as address, dt.id as delivery_ts_id, delivery_info.rate::integer as rate,
-                            delivery_info.delivery_sum::numeric(14,6) as delivery_sum, delivery_info.tip_sum::numeric(14,6) as tip_sum
+                            delivery_info.order_sum::numeric(14,6) as order_sum, delivery_info.tip_sum::numeric(14,6) as tip_sum
                             FROM (
                                 SELECT '{order_id}' as order_id, '{order_ts}' as order_ts, '{delivery_id}' as delivery_id, '{courier_id}' as courier_id,
-                                        '{address}' as address, '{delivery_ts}' as delivery_ts, '{rate}' as rate, '{delivery_sum}' as delivery_sum, '{tip_sum}' as tip_sum
+                                        '{address}' as address, '{delivery_ts}' as delivery_ts, '{rate}' as rate, '{order_sum}' as order_sum, '{tip_sum}' as tip_sum
                             ) as delivery_info
                             INNER JOIN dds.{time_table} dt
                             ON Date_trunc('second', dt.ts) = Date_trunc('second', delivery_info.delivery_ts::timestamptz) AND dt.special_mark = 1
                             INNER JOIN dds.{courier_table} dc
                             ON dc.courier_id = delivery_info.courier_id
-                            INNER JOIN dds.{order_table} do1
-                            ON do1.order_key = delivery_info.order_id
+                            --INNER JOIN dds.{order_table} do1
+                            --ON do1.order_key = delivery_info.order_id
                             WHERE delivery_info.delivery_ts > '{max_date}';"""
         cursor.execute(delivery_insert)
     cursor.execute(f"""INSERT INTO stg.srv_etl_settings as tbl (workflow_key, workflow_settings)

@@ -15,17 +15,12 @@ import logging
 import re
 import json
 
-"""
-Программа работает не как задумано, вопреки ожиданиям, один запуск любого скрипта по созданию табилцы приводит к созданию 4 копий таблиц с одним наименованием.
-"""
 
 log = logging.getLogger(__name__)
 
 
-def check_and_create(table_schema, tables):
-
-    connect_to_stg = psycopg2.connect("host=localhost port=15432 dbname=de user=jovyan password=jovyan")
-    inside_cursor = connect_to_stg.cursor()
+def check_and_create(connect_to_db, table_schema, tables):
+    inside_cursor = connect_to_db.cursor()
     # Делаем выборку наименований таблиц их информационной схемы postgresql
     check_stg_select = f"""SELECT table_name  FROM information_schema.columns
     WHERE table_schema = '{table_schema}';"""
@@ -35,9 +30,9 @@ def check_and_create(table_schema, tables):
     for i in tables:
         if i not in check_result:
             inside_cursor.execute(f"""create SCHEMA IF NOT EXISTS {table_schema}""")
-            script_name = f'Check/SQL_scripts/check&create/{table_schema}/ddl_{i}.sql'
+            script_name = f'/lessons/dags/SQL_scripts/{table_schema}/ddl_{i}.sql'
             inside_cursor.execute(open(script_name, 'r').read())
-            connect_to_stg.commit()
+            connect_to_db.commit()
             log.warning(f"В схеме {table_schema} нехватает таблиц {i}, выполнен скрипт {script_name}")
     log.info(f'Проверка схемы {table_schema} завершена успешно')
 

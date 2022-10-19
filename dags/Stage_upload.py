@@ -1,23 +1,11 @@
-from typing import List
-from urllib.parse import quote_plus as quote
-from pymongo.mongo_client import MongoClient
-import pymongo
-from airflow.models.variable import Variable
-from datetime import datetime, timedelta
-from airflow import DAG
+from datetime import datetime
 import psycopg2
 from airflow.providers.http.operators.http import SimpleHttpOperator
-from airflow.operators.python import PythonOperator
-from airflow.hooks.base import BaseHook
-from airflow.models.xcom import XCom
-import datetime as dt
 import logging
-import re
-import json
 import logging
-import Check
 from decimal import Decimal
 import requests
+import pymongo
 
 log = logging.getLogger(__name__)
 
@@ -62,11 +50,20 @@ def download_postgresdata_to_staging(connect_to_scr, connect_to_db, out_schema, 
     log.info(f"Данные загружены в  таблицу {schema}.{table}")
 
 
+MONGO_DB_CERTIFICATE_PATH = '/opt/airflow/certificates/PracticumSp5MongoDb.crt'
+MONGO_DB_DATABASE_NAME = "db-mongo"
+MONGO_DB_HOST = "rc1a-ba83ae33hvt4pokq.mdb.yandexcloud.net:27018"
+MONGO_DB_PASSWORD = "student1"
+MONGO_DB_REPLICA_SET = "rs01"
+MONGO_DB_USER = "student"
+
+url = f'mongodb://{MONGO_DB_USER}:{MONGO_DB_PASSWORD}@{MONGO_DB_HOST}/?replicaSet={MONGO_DB_REPLICA_SET}&authSource={MONGO_DB_DATABASE_NAME}'
+mongo_client = pymongo.MongoClient(url, tlsCAFile=MONGO_DB_CERTIFICATE_PATH)[MONGO_DB_DATABASE_NAME]
 
 
-def download_mongo_to_staging(mongo_client, collection_name, schema, table_name):
+def download_mongo_to_staging(mongo_client,connect_to_db, collection_name, schema, table_name):
+    mongo_client = pymongo.MongoClient(url, tlsCAFile=MONGO_DB_CERTIFICATE_PATH)[MONGO_DB_DATABASE_NAME]
     collection = mongo_client[collection_name]
-    connect_to_db = psycopg2.connect("host=localhost port=15432 dbname=de user=jovyan password=jovyan")
     cursor_to_stg = connect_to_db.cursor()
     cursor_to_stg.execute(f"""SELECT coalesce(max(workflow_key),'2022-01-01 00:00:00.0') FROM {schema}.srv_etl_settings WHERE workflow_settings = '{table_name}';""")
     max_date = cursor_to_stg.fetchone()[0]
@@ -141,10 +138,9 @@ def couriers_data(data):
     return values
 
 
-def download_api_to_staging(host, headers, schema, table):
+def download_api_to_staging(host, connect_to_db, headers, schema, table):
     data = requests.get(host, headers=headers)
     data = data.json()
-    connect_to_db = psycopg2.connect("host=localhost port=15432 dbname=de user=jovyan password=jovyan")
     cursor_to_stg = connect_to_db.cursor()
     cursor_to_stg.execute(f"""SELECT column_name FROM information_schema.columns WHERE table_schema = '{schema}' and table_name = '{table}';""")
     columns = cursor_to_stg.fetchall()
@@ -158,7 +154,7 @@ def download_api_to_staging(host, headers, schema, table):
         if values is None:
             log.info(f"В источнике нет данных свежее, чем те что уже записаны в таблицу {table}")
             return 200
-    elif table == 'couriers':
+    elif table == ('couriers' or 'restaurants'):
         values = couriers_data(data)
     else:
         log.warning(f'Неверное имя таблицы {table}')
