@@ -1,11 +1,8 @@
 from airflow import DAG
 import psycopg2
-from airflow.providers.http.operators.http import SimpleHttpOperator
 from airflow.operators.python import PythonOperator
-from airflow.models.xcom import XCom
 import logging
-import logging
-import Check
+from src.scripts import Check
 from datetime import datetime
 
 
@@ -15,7 +12,7 @@ connect_to_db = psycopg2.connect("host=localhost port=5432 dbname=de user=jovyan
 
 
 def check_database(connect_to_db=connect_to_db):
-    Check.check_and_create(connect_to_db,'cdm', ALL_CDM_TABLES)
+    Check.check_and_create(connect_to_db, 'cdm', ALL_CDM_TABLES)
 
 def courier_ledger(connect_to_db, cdm_table, delivery_table, timestamps_table, couriers_table):
     cursor = connect_to_db.cursor()

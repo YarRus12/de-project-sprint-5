@@ -1,7 +1,4 @@
-from urllib.parse import quote_plus as quote
-from airflow.models.xcom import XCom
 from datetime import datetime
-import logging
 import logging
 import re
 

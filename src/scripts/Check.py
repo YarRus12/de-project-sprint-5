@@ -1,19 +1,4 @@
-from typing import List
-from urllib.parse import quote_plus as quote
-from pymongo.mongo_client import MongoClient
-import pymongo
-from airflow.models.variable import Variable
-from datetime import datetime, timedelta
-from airflow import DAG
-import psycopg2
-from airflow.providers.http.operators.http import SimpleHttpOperator
-from airflow.operators.python import PythonOperator
-from airflow.hooks.base import BaseHook
-from airflow.models.xcom import XCom
-import datetime as dt
 import logging
-import re
-import json
 
 
 log = logging.getLogger(__name__)

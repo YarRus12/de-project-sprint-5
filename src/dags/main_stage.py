@@ -6,12 +6,8 @@ from datetime import datetime
 from airflow import DAG
 import psycopg2
 from airflow.operators.python import PythonOperator
-from airflow.models.xcom import XCom
 import logging
-import logging
-import Check
-import Stage_upload
-
+from src.scripts import Stage_upload, Check
 
 log = logging.getLogger(__name__)
 

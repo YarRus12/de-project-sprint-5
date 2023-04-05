@@ -1,14 +1,9 @@
-from urllib.parse import quote_plus as quote
 from airflow import DAG
 import psycopg2
 from airflow.operators.python import PythonOperator
-from airflow.models.xcom import XCom
 from datetime import datetime
 import logging
-import Check
-import DDS_upload
-
-
+from src.scripts import DDS_upload, Check
 
 ALL_DDS_TABLES = ['dm_users', 'dm_restaurants', 'dm_products', 'dm_timestamps', 'dm_orders', 'fct_product_sales', 'dm_couriers', 'dm_delivery']
 
@@ -19,10 +14,10 @@ connect_to_db = psycopg2.connect("host=localhost port=5432 dbname=de user=jovyan
 
 
 def check_database(connect_to_db=connect_to_db):
-    Check.check_and_create(connect_to_db,'dds', ALL_DDS_TABLES)
+    Check.check_and_create(connect_to_db, 'dds', ALL_DDS_TABLES)
 
 def upload_restaurant_dds(connect_to_db, dds_table, stg_table):
-    DDS_upload.upload_restaurant(connect_to_db=connect_to_db,dds_table=dds_table,stg_table=stg_table)
+    DDS_upload.upload_restaurant(connect_to_db=connect_to_db, dds_table=dds_table, stg_table=stg_table)
 
 def upload_timespamp_dss(connect_to_db, dds_table, stg_orders, stg_delivery):
     DDS_upload.upload_timespamp(connect_to_db=connect_to_db, dds_table=dds_table, stg_orders=stg_orders, stg_delivery=stg_delivery)
@@ -41,11 +36,11 @@ def upload_couriers_dds(connect_to_db, dds_table, stg_table):
 
 def upload_delivery_dds(connect_to_db, dds_table, stg_table, time_table, courier_table, order_table):
     DDS_upload.upload_delivery(connect_to_db=connect_to_db, dds_table=dds_table, stg_table=stg_table,
-    time_table=time_table, courier_table=courier_table, order_table=order_table)
+                               time_table=time_table, courier_table=courier_table, order_table=order_table)
     
 def events_load_dds(connect_to_db, dds_table, stg_table, product_table, order_table):
     DDS_upload.events_load(connect_to_db=connect_to_db, dds_table=dds_table,
-    stg_table=stg_table, product_table=product_table, order_table=order_table)
+                           stg_table=stg_table, product_table=product_table, order_table=order_table)
 
 
 dag = DAG(
