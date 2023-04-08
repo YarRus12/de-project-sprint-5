@@ -20,7 +20,7 @@ def upload_restaurant_dds(connect_to_db, dds_table, stg_table):
     DDS_upload.upload_restaurant(connect_to_db=connect_to_db, dds_table=dds_table, stg_table=stg_table)
 
 def upload_timespamp_dss(connect_to_db, dds_table, stg_orders, stg_delivery):
-    DDS_upload.upload_timespamp(connect_to_db=connect_to_db, dds_table=dds_table, stg_orders=stg_orders, stg_delivery=stg_delivery)
+    DDS_upload.upload_timestamp(connect_to_db=connect_to_db, dds_table=dds_table, stg_orders=stg_orders, stg_delivery=stg_delivery)
 
 def upload_users_dds(connect_to_db, dds_table, stg_table):
     DDS_upload.upload_users(connect_to_db=connect_to_db, dds_table=dds_table, stg_table=stg_table)

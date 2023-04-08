@@ -35,7 +35,7 @@ def upload_restaurant(connect_to_db, dds_table, stg_table):
     log.info(f'Данные загружены в таблицу {dds_table}')
     
 
-def upload_timespamp(connect_to_db, dds_table, stg_orders, stg_delivery):
+def upload_timestamp(connect_to_db, dds_table, stg_orders, stg_delivery):
     """Функция заполняет таблицу dds.dm_timestamps данными из stg.ordersystem_orders"""
     cursor = connect_to_db.cursor()
     max_date_query = f"""SELECT coalesce(max(workflow_key),'2022-01-01 00:00:00.0') FROM stg.srv_etl_settings WHERE workflow_settings = '{dds_table}_order';"""
